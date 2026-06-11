@@ -72,6 +72,8 @@ fun AutoKotekaApp() {
     val yalimoTahun by dataStoreManager.yalimoTahunIniFlow.collectAsState(initial = 0)
     
     val latestReport by dataStoreManager.latestReportFlow.collectAsState(initial = "")
+    val pendingRawText by dataStoreManager.pendingRawTextFlow.collectAsState(initial = "")
+    val pendingReason by dataStoreManager.pendingReasonFlow.collectAsState(initial = "")
 
     var showEditDialog by remember { mutableStateOf(false) }
 
@@ -90,7 +92,77 @@ fun AutoKotekaApp() {
 
         PermissionCheckSection(context)
 
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(16.dp))
+
+        if (pendingRawText.isNotEmpty()) {
+            Card(
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text(
+                        text = "⚠️ Tinjauan Laporan Diperlukan!",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onErrorContainer
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = pendingReason,
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onErrorContainer
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "Isi Laporan Mentah:\n$pendingRawText",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onErrorContainer
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        Button(
+                            onClick = {
+                                coroutineScope.launch {
+                                    dataStoreManager.clearPendingReport()
+                                    Toast.makeText(context, "Laporan Dibuang", Toast.LENGTH_SHORT).show()
+                                }
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                        ) {
+                            Text("Abaikan Laporan")
+                        }
+                        
+                        Button(
+                            onClick = {
+                                coroutineScope.launch {
+                                    val parsedData = ReportParser.parseMessage(pendingRawText)
+                                    if (parsedData != null) {
+                                        dataStoreManager.setLatestRawText(pendingRawText)
+                                        dataStoreManager.addAccumulation(parsedData.tHariIni, parsedData.isYalimo)
+                                        
+                                        // Update laporan format akhir untuk di-copy
+                                        val wamenaBulan = dataStoreManager.wamenaBulanIniFlow.first()
+                                        val wamenaTahun = dataStoreManager.wamenaTahunIniFlow.first()
+                                        val yalimoBulan = dataStoreManager.yalimoBulanIniFlow.first()
+                                        val yalimoTahun = dataStoreManager.yalimoTahunIniFlow.first()
+                                        
+                                        val finalReport = ReportParser.formatReport(
+                                            parsedData, wamenaBulan, wamenaTahun, yalimoBulan, yalimoTahun
+                                        )
+                                        dataStoreManager.saveLatestReport(finalReport)
+                                    }
+                                    dataStoreManager.clearPendingReport()
+                                    Toast.makeText(context, "Laporan Ditambahkan!", Toast.LENGTH_SHORT).show()
+                                }
+                            }
+                        ) {
+                            Text("Tetap Setujui")
+                        }
+                    }
+                }
+            }
+            Spacer(modifier = Modifier.height(16.dp))
+        }
 
         Card(
             modifier = Modifier.fillMaxWidth()

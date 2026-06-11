@@ -56,7 +56,18 @@ class NotificationService : NotificationListenerService() {
             if (parsedData != null) {
                 val dataStoreManager = DataStoreManager(applicationContext)
                 
-                // Tambahkan akumulasi dengan parameter lokasi
+                val latestRawText = dataStoreManager.latestRawTextFlow.first()
+                val validation = ReportParser.validateReport(parsedData, message, latestRawText)
+
+                if (!validation.isValid) {
+                    // Masukkan ke karantina
+                    dataStoreManager.savePendingReport(message, validation.reason)
+                    showWarningNotification()
+                    return@launch
+                }
+                
+                // Lulus Validasi -> Eksekusi normal
+                dataStoreManager.setLatestRawText(message)
                 dataStoreManager.addAccumulation(parsedData.tHariIni, parsedData.isYalimo)
 
                 // Ambil nilai terbaru untuk ke-4 keranjang
@@ -76,6 +87,42 @@ class NotificationService : NotificationListenerService() {
                 showCopyNotification(finalReport)
             }
         }
+    }
+
+    private fun showWarningNotification() {
+        val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        val channelId = "auto_koteka_channel"
+
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+            val channel = NotificationChannel(
+                channelId,
+                "Auto Koteka Notifications",
+                NotificationManager.IMPORTANCE_HIGH
+            )
+            notificationManager.createNotificationChannel(channel)
+        }
+
+        val intent = Intent(this, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+        }
+
+        val pendingIntent = PendingIntent.getActivity(
+            this,
+            1,
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        val notification = NotificationCompat.Builder(this, channelId)
+            .setSmallIcon(android.R.drawable.ic_dialog_alert)
+            .setContentTitle("⚠️ Laporan Tertahan!")
+            .setContentText("Ditemukan keanehan pada laporan. Klik untuk meninjau.")
+            .setPriority(NotificationCompat.PRIORITY_MAX)
+            .setContentIntent(pendingIntent)
+            .setAutoCancel(true)
+            .build()
+
+        notificationManager.notify(888, notification) // ID unik untuk warning
     }
 
     private fun showCopyNotification(reportText: String) {

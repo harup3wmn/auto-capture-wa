@@ -46,6 +46,32 @@ object ReportParser {
         return ParsedData(isYalimo, tanggal, tHariIni, pk, ps, pb)
     }
 
+    data class ValidationResult(
+        val isValid: Boolean,
+        val reason: String = ""
+    )
+
+    fun validateReport(data: ParsedData, rawText: String, latestRawText: String): ValidationResult {
+        // 1. Validasi Matematika (Apakah penjabaran PK+PS+PB sesuai dengan Total Harian)
+        val sum = data.pk + data.ps + data.pb
+        if (sum != data.tHariIni) {
+            return ValidationResult(
+                isValid = false,
+                reason = "Jumlah PK(${data.pk}) + PS(${data.ps}) + PB(${data.pb}) = $sum. Namun tertulis Total Harian = ${data.tHariIni}."
+            )
+        }
+
+        // 2. Validasi Duplikat Jangka Panjang
+        if (rawText == latestRawText) {
+            return ValidationResult(
+                isValid = false,
+                reason = "Pesan ini sama persis 100% dengan laporan terakhir yang diproses. Indikasi laporan ganda/di-forward ulang."
+            )
+        }
+
+        return ValidationResult(isValid = true)
+    }
+
     fun formatReport(
         data: ParsedData, 
         wamenaBulan: Int, 

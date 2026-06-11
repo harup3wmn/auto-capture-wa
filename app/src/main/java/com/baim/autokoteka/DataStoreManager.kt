@@ -20,6 +20,11 @@ class DataStoreManager(private val context: Context) {
         val YALIMO_BULAN_INI = intPreferencesKey("yalimo_bulan_ini")
         val YALIMO_TAHUN_INI = intPreferencesKey("yalimo_tahun_ini")
         val LATEST_REPORT = stringPreferencesKey("latest_report")
+        
+        // Variabel untuk Karantina & Duplikat
+        val LATEST_RAW_TEXT = stringPreferencesKey("latest_raw_text")
+        val PENDING_RAW_TEXT = stringPreferencesKey("pending_raw_text")
+        val PENDING_REASON = stringPreferencesKey("pending_reason")
     }
 
     val wamenaBulanIniFlow: Flow<Int> = context.dataStore.data.map { preferences ->
@@ -38,6 +43,38 @@ class DataStoreManager(private val context: Context) {
 
     val latestReportFlow: Flow<String> = context.dataStore.data.map { preferences ->
         preferences[LATEST_REPORT] ?: ""
+    }
+
+    val latestRawTextFlow: Flow<String> = context.dataStore.data.map { preferences ->
+        preferences[LATEST_RAW_TEXT] ?: ""
+    }
+
+    val pendingRawTextFlow: Flow<String> = context.dataStore.data.map { preferences ->
+        preferences[PENDING_RAW_TEXT] ?: ""
+    }
+
+    val pendingReasonFlow: Flow<String> = context.dataStore.data.map { preferences ->
+        preferences[PENDING_REASON] ?: ""
+    }
+
+    suspend fun savePendingReport(rawText: String, reason: String) {
+        context.dataStore.edit { preferences ->
+            preferences[PENDING_RAW_TEXT] = rawText
+            preferences[PENDING_REASON] = reason
+        }
+    }
+
+    suspend fun clearPendingReport() {
+        context.dataStore.edit { preferences ->
+            preferences[PENDING_RAW_TEXT] = ""
+            preferences[PENDING_REASON] = ""
+        }
+    }
+
+    suspend fun setLatestRawText(rawText: String) {
+        context.dataStore.edit { preferences ->
+            preferences[LATEST_RAW_TEXT] = rawText
+        }
     }
 
     suspend fun updateDataWamena(bulan: Int, tahun: Int) {
