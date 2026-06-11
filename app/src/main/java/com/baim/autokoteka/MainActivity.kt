@@ -55,6 +55,164 @@ class MainActivity : ComponentActivity() {
                 val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                 val clip = ClipData.newPlainText("Koteka Report", textToCopy)
                 clipboard.setPrimaryClip(clip)
+                Toast.makeText(this, "Teks Laporan Berhasil Di-copy!", Toast.LENGTH_LONG).show()
+            }
+        }
+    }
+}
+
+@Composable
+fun AutoKotekaApp() {
+    val context = LocalContext.current
+    val dataStoreManager = remember { DataStoreManager(context) }
+    val coroutineScope = rememberCoroutineScope()
+
+    val wamenaBulan by dataStoreManager.wamenaBulanIniFlow.collectAsState(initial = 21)
+    val wamenaTahun by dataStoreManager.wamenaTahunIniFlow.collectAsState(initial = 294)
+    val yalimoBulan by dataStoreManager.yalimoBulanIniFlow.collectAsState(initial = 0)
+    val yalimoTahun by dataStoreManager.yalimoTahunIniFlow.collectAsState(initial = 0)
+    
+    val latestReport by dataStoreManager.latestReportFlow.collectAsState(initial = "")
+    val logHistory by dataStoreManager.logHistoryFlow.collectAsState(initial = emptyList())
+
+    var showEditDialog by remember { mutableStateOf(false) }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(
+            text = "Auto Koteka",
+            style = MaterialTheme.typography.headlineMedium,
+            modifier = Modifier.padding(bottom = 16.dp)
+        )
+
+        PermissionCheckSection(context)
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Tampilan Data Akumulasi
+        Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Text("Wamena Kota", fontWeight = FontWeight.Bold)
+                Text("Bulan Ini: $wamenaBulan | Tahun Ini: $wamenaTahun")
+                Spacer(modifier = Modifier.height(8.dp))
+                Text("Yalimo", fontWeight = FontWeight.Bold)
+                Text("Bulan Ini: $yalimoBulan | Tahun Ini: $yalimoTahun")
+                Spacer(modifier = Modifier.height(8.dp))
+                Text("UP3 Wamena (Total)", fontWeight = FontWeight.Bold)
+                Text("Bulan Ini: ${wamenaBulan + yalimoBulan} | Tahun Ini: ${wamenaTahun + yalimoTahun}")
+                
+                Spacer(modifier = Modifier.height(16.dp))
+                Button(
+                    onClick = { showEditDialog = true },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Edit Data Akumulasi")
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        Text(
+            text = "Buku Log (7 Hari Terakhir)",
+            style = MaterialTheme.typography.titleMedium,
+            modifier = Modifier.align(Alignment.Start)
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+
+        if (logHistory.isEmpty()) {
+            Text("Belum ada riwayat laporan.", style = MaterialTheme.typography.bodyMedium)
+        } else {
+            logHistory.forEach { entry ->
+                LogEntryCard(
+                    entry = entry, 
+                    dataStoreManager = dataStoreManager, 
+                    context = context, 
+                    coroutineScope = coroutineScope
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+            }
+        }
+    }
+
+    if (showEditDialog) {
+        var editWamenaBulan by remember { mutableStateOf(wamenaBulan.toString()) }
+        var editWamenaTahun by remember { mutableStateOf(wamenaTahun.toString()) }
+        var editYalimoBulan by remember { mutableStateOf(yalimoBulan.toString()) }
+        var editYalimoTahun by remember { mutableStateOf(yalimoTahun.toString()) }
+
+        AlertDialog(
+            onDismissRequest = { showEditDialog = false },
+            title = { Text("Edit Akumulasi") },
+            text = {
+                Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                    Text("Wamena Kota", fontWeight = FontWeight.Bold)
+                    OutlinedTextField(
+                        value = editWamenaBulan,
+                        onValueChange = { editWamenaBulan = it },
+                        label = { Text("Bulan Ini") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                    )
+                    OutlinedTextField(
+                        value = editWamenaTahun,
+                        onValueChange = { editWamenaTahun = it },
+                        label = { Text("Tahun Ini") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                    )
+                    
+                    Spacer(modifier = Modifier.height(16.dp))
+                    
+                    Text("Yalimo", fontWeight = FontWeight.Bold)
+                    OutlinedTextField(
+                        value = editYalimoBulan,
+                        onValueChange = { editYalimoBulan = it },
+                        label = { Text("Bulan Ini") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                    )
+                    OutlinedTextField(
+                        value = editYalimoTahun,
+                        onValueChange = { editYalimoTahun = it },
+                        label = { Text("Tahun Ini") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        coroutineScope.launch {
+                            val wb = editWamenaBulan.toIntOrNull() ?: wamenaBulan
+                            val wt = editWamenaTahun.toIntOrNull() ?: wamenaTahun
+                            val yb = editYalimoBulan.toIntOrNull() ?: yalimoBulan
+                            val yt = editYalimoTahun.toIntOrNull() ?: yalimoTahun
+                            
+                            dataStoreManager.updateDataWamena(wb, wt)
+                            dataStoreManager.updateDataYalimo(yb, yt)
+                            showEditDialog = false
+                        }
+                    }
+                ) {
+                    Text("Simpan")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showEditDialog = false }) {
+                    Text("Batal")
+                }
+            }
+        )
+    }
+}
+
+@Composable
+fun PermissionCheckSection(context: Context) {
+    val enabledListeners = Settings.Secure.getString(context.contentResolver, "enabled_notification_listeners")
+    val packageName = context.packageName
     val isGranted = enabledListeners != null && enabledListeners.contains(packageName)
 
     if (!isGranted) {
