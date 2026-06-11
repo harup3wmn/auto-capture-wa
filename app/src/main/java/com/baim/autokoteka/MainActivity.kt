@@ -21,6 +21,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
@@ -54,250 +55,6 @@ class MainActivity : ComponentActivity() {
                 val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                 val clip = ClipData.newPlainText("Koteka Report", textToCopy)
                 clipboard.setPrimaryClip(clip)
-                Toast.makeText(this, "Teks Laporan Berhasil Di-copy!", Toast.LENGTH_LONG).show()
-            }
-        }
-    }
-}
-
-@Composable
-fun AutoKotekaApp() {
-    val context = LocalContext.current
-    val dataStoreManager = remember { DataStoreManager(context) }
-    val coroutineScope = rememberCoroutineScope()
-
-    val wamenaBulan by dataStoreManager.wamenaBulanIniFlow.collectAsState(initial = 21)
-    val wamenaTahun by dataStoreManager.wamenaTahunIniFlow.collectAsState(initial = 294)
-    val yalimoBulan by dataStoreManager.yalimoBulanIniFlow.collectAsState(initial = 0)
-    val yalimoTahun by dataStoreManager.yalimoTahunIniFlow.collectAsState(initial = 0)
-    
-    val latestReport by dataStoreManager.latestReportFlow.collectAsState(initial = "")
-    val pendingRawText by dataStoreManager.pendingRawTextFlow.collectAsState(initial = "")
-    val pendingReason by dataStoreManager.pendingReasonFlow.collectAsState(initial = "")
-
-    var showEditDialog by remember { mutableStateOf(false) }
-
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Text(
-            text = "Auto Koteka",
-            style = MaterialTheme.typography.headlineMedium,
-            modifier = Modifier.padding(bottom = 16.dp)
-        )
-
-        PermissionCheckSection(context)
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        if (pendingRawText.isNotEmpty()) {
-            Card(
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Text(
-                        text = "⚠️ Tinjauan Laporan Diperlukan!",
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onErrorContainer
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = pendingReason,
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onErrorContainer
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = "Isi Laporan Mentah:\n$pendingRawText",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onErrorContainer
-                    )
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        Button(
-                            onClick = {
-                                coroutineScope.launch {
-                                    dataStoreManager.clearPendingReport()
-                                    Toast.makeText(context, "Laporan Dibuang", Toast.LENGTH_SHORT).show()
-                                }
-                            },
-                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
-                        ) {
-                            Text("Abaikan Laporan")
-                        }
-                        
-                        Button(
-                            onClick = {
-                                coroutineScope.launch {
-                                    val parsedData = ReportParser.parseMessage(pendingRawText)
-                                    if (parsedData != null) {
-                                        dataStoreManager.setLatestRawText(pendingRawText)
-                                        dataStoreManager.addAccumulation(parsedData.tHariIni, parsedData.isYalimo)
-                                        
-                                        // Update laporan format akhir untuk di-copy
-                                        val wamenaBulan = dataStoreManager.wamenaBulanIniFlow.first()
-                                        val wamenaTahun = dataStoreManager.wamenaTahunIniFlow.first()
-                                        val yalimoBulan = dataStoreManager.yalimoBulanIniFlow.first()
-                                        val yalimoTahun = dataStoreManager.yalimoTahunIniFlow.first()
-                                        
-                                        val finalReport = ReportParser.formatReport(
-                                            parsedData, wamenaBulan, wamenaTahun, yalimoBulan, yalimoTahun
-                                        )
-                                        dataStoreManager.saveLatestReport(finalReport)
-                                    }
-                                    dataStoreManager.clearPendingReport()
-                                    Toast.makeText(context, "Laporan Ditambahkan!", Toast.LENGTH_SHORT).show()
-                                }
-                            }
-                        ) {
-                            Text("Tetap Setujui")
-                        }
-                    }
-                }
-            }
-            Spacer(modifier = Modifier.height(16.dp))
-        }
-
-        Card(
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Column(
-                modifier = Modifier.padding(16.dp)
-            ) {
-                Text(
-                    text = "Laporan Terakhir",
-                    style = MaterialTheme.typography.titleMedium,
-                    modifier = Modifier.padding(bottom = 8.dp)
-                )
-                
-                if (latestReport.isEmpty()) {
-                    Text("Belum ada laporan yang diekstrak.")
-                } else {
-                    Text(
-                        text = latestReport,
-                        style = MaterialTheme.typography.bodySmall,
-                        modifier = Modifier.padding(bottom = 16.dp)
-                    )
-                    Button(
-                        onClick = {
-                            val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                            val clip = ClipData.newPlainText("Koteka Report", latestReport)
-                            clipboard.setPrimaryClip(clip)
-                            Toast.makeText(context, "Berhasil di-copy!", Toast.LENGTH_SHORT).show()
-                        },
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text("Copy to Clipboard")
-                    }
-                }
-            }
-        }
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        Button(
-            onClick = { showEditDialog = true },
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text("Edit Data Akumulasi")
-        }
-        
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // Tampilan Data Akumulasi
-        Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                Text("Wamena Kota", fontWeight = FontWeight.Bold)
-                Text("Bulan Ini: $wamenaBulan | Tahun Ini: $wamenaTahun")
-                Spacer(modifier = Modifier.height(8.dp))
-                Text("Yalimo", fontWeight = FontWeight.Bold)
-                Text("Bulan Ini: $yalimoBulan | Tahun Ini: $yalimoTahun")
-                Spacer(modifier = Modifier.height(8.dp))
-                Text("UP3 Wamena (Total)", fontWeight = FontWeight.Bold)
-                Text("Bulan Ini: ${wamenaBulan + yalimoBulan} | Tahun Ini: ${wamenaTahun + yalimoTahun}")
-            }
-        }
-    }
-
-    if (showEditDialog) {
-        var editWamenaBulan by remember { mutableStateOf(wamenaBulan.toString()) }
-        var editWamenaTahun by remember { mutableStateOf(wamenaTahun.toString()) }
-        var editYalimoBulan by remember { mutableStateOf(yalimoBulan.toString()) }
-        var editYalimoTahun by remember { mutableStateOf(yalimoTahun.toString()) }
-
-        AlertDialog(
-            onDismissRequest = { showEditDialog = false },
-            title = { Text("Edit Akumulasi") },
-            text = {
-                Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
-                    Text("Wamena Kota", fontWeight = FontWeight.Bold)
-                    OutlinedTextField(
-                        value = editWamenaBulan,
-                        onValueChange = { editWamenaBulan = it },
-                        label = { Text("Bulan Ini") },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
-                    )
-                    OutlinedTextField(
-                        value = editWamenaTahun,
-                        onValueChange = { editWamenaTahun = it },
-                        label = { Text("Tahun Ini") },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
-                    )
-                    
-                    Spacer(modifier = Modifier.height(16.dp))
-                    
-                    Text("Yalimo", fontWeight = FontWeight.Bold)
-                    OutlinedTextField(
-                        value = editYalimoBulan,
-                        onValueChange = { editYalimoBulan = it },
-                        label = { Text("Bulan Ini") },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
-                    )
-                    OutlinedTextField(
-                        value = editYalimoTahun,
-                        onValueChange = { editYalimoTahun = it },
-                        label = { Text("Tahun Ini") },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
-                    )
-                }
-            },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        coroutineScope.launch {
-                            val wb = editWamenaBulan.toIntOrNull() ?: wamenaBulan
-                            val wt = editWamenaTahun.toIntOrNull() ?: wamenaTahun
-                            val yb = editYalimoBulan.toIntOrNull() ?: yalimoBulan
-                            val yt = editYalimoTahun.toIntOrNull() ?: yalimoTahun
-                            
-                            dataStoreManager.updateDataWamena(wb, wt)
-                            dataStoreManager.updateDataYalimo(yb, yt)
-                            showEditDialog = false
-                        }
-                    }
-                ) {
-                    Text("Simpan")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showEditDialog = false }) {
-                    Text("Batal")
-                }
-            }
-        )
-    }
-}
-
-@Composable
-fun PermissionCheckSection(context: Context) {
-    val enabledListeners = Settings.Secure.getString(context.contentResolver, "enabled_notification_listeners")
-    val packageName = context.packageName
     val isGranted = enabledListeners != null && enabledListeners.contains(packageName)
 
     if (!isGranted) {
@@ -340,6 +97,91 @@ fun PermissionCheckSection(context: Context) {
                 color = MaterialTheme.colorScheme.onPrimaryContainer,
                 modifier = Modifier.padding(16.dp)
             )
+        }
+    }
+}
+
+@Composable
+fun LogEntryCard(
+    entry: LogEntry, 
+    dataStoreManager: DataStoreManager, 
+    context: Context, 
+    coroutineScope: kotlinx.coroutines.CoroutineScope
+) {
+    val dateString = java.text.SimpleDateFormat("dd/MM/yyyy HH:mm", java.util.Locale.getDefault())
+        .format(java.util.Date(entry.timestamp))
+
+    val (containerColor, contentColor) = when {
+        entry.status == "PENDING" -> Pair(MaterialTheme.colorScheme.errorContainer, MaterialTheme.colorScheme.onErrorContainer)
+        entry.status == "PROCESSED" -> Pair(MaterialTheme.colorScheme.primaryContainer, MaterialTheme.colorScheme.onPrimaryContainer)
+        else -> Pair(MaterialTheme.colorScheme.surfaceVariant, MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = containerColor)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                Text(dateString, style = MaterialTheme.typography.labelSmall, color = contentColor)
+                Text(entry.status, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = contentColor)
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+            
+            if (entry.isAnomaly) {
+                Text(
+                    text = "⚠️ Anomali: ${entry.anomalyReason}", 
+                    style = MaterialTheme.typography.bodySmall, 
+                    fontWeight = FontWeight.Bold,
+                    color = contentColor
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+            }
+            
+            Text(entry.rawText, style = MaterialTheme.typography.bodySmall, color = contentColor)
+
+            if (entry.status == "PENDING") {
+                Spacer(modifier = Modifier.height(16.dp))
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Button(
+                        onClick = {
+                            coroutineScope.launch {
+                                dataStoreManager.updateLogStatus(entry.id, "REJECTED")
+                                Toast.makeText(context, "Laporan Ditolak", Toast.LENGTH_SHORT).show()
+                            }
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                    ) {
+                        Text("Tolak")
+                    }
+                    
+                    Button(
+                        onClick = {
+                            coroutineScope.launch {
+                                val parsedData = ReportParser.parseMessage(entry.rawText)
+                                if (parsedData != null) {
+                                    dataStoreManager.setLatestRawText(entry.rawText)
+                                    dataStoreManager.addAccumulation(parsedData.tHariIni, parsedData.isYalimo)
+                                    
+                                    val wamenaBulan = dataStoreManager.wamenaBulanIniFlow.first()
+                                    val wamenaTahun = dataStoreManager.wamenaTahunIniFlow.first()
+                                    val yalimoBulan = dataStoreManager.yalimoBulanIniFlow.first()
+                                    val yalimoTahun = dataStoreManager.yalimoTahunIniFlow.first()
+                                    
+                                    val finalReport = ReportParser.formatReport(
+                                        parsedData, wamenaBulan, wamenaTahun, yalimoBulan, yalimoTahun
+                                    )
+                                    dataStoreManager.saveLatestReport(finalReport)
+                                }
+                                dataStoreManager.updateLogStatus(entry.id, "APPROVED")
+                                Toast.makeText(context, "Laporan Disetujui!", Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    ) {
+                        Text("Setujui")
+                    }
+                }
+            }
         }
     }
 }

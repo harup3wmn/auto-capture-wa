@@ -10,7 +10,19 @@ import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
+import org.json.JSONArray
+import org.json.JSONObject
+
 val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "koteka_prefs")
+
+data class LogEntry(
+    val id: Long,
+    val timestamp: Long,
+    val rawText: String,
+    val isAnomaly: Boolean,
+    val anomalyReason: String,
+    val status: String // "PROCESSED", "PENDING", "APPROVED", "REJECTED"
+)
 
 class DataStoreManager(private val context: Context) {
 
@@ -21,10 +33,8 @@ class DataStoreManager(private val context: Context) {
         val YALIMO_TAHUN_INI = intPreferencesKey("yalimo_tahun_ini")
         val LATEST_REPORT = stringPreferencesKey("latest_report")
         
-        // Variabel untuk Karantina & Duplikat
         val LATEST_RAW_TEXT = stringPreferencesKey("latest_raw_text")
-        val PENDING_RAW_TEXT = stringPreferencesKey("pending_raw_text")
-        val PENDING_REASON = stringPreferencesKey("pending_reason")
+        val LOG_HISTORY = stringPreferencesKey("log_history")
     }
 
     val wamenaBulanIniFlow: Flow<Int> = context.dataStore.data.map { preferences ->
@@ -49,25 +59,73 @@ class DataStoreManager(private val context: Context) {
         preferences[LATEST_RAW_TEXT] ?: ""
     }
 
-    val pendingRawTextFlow: Flow<String> = context.dataStore.data.map { preferences ->
-        preferences[PENDING_RAW_TEXT] ?: ""
+    val logHistoryFlow: Flow<List<LogEntry>> = context.dataStore.data.map { preferences ->
+        val jsonString = preferences[LOG_HISTORY] ?: "[]"
+        parseLogHistory(jsonString)
     }
 
-    val pendingReasonFlow: Flow<String> = context.dataStore.data.map { preferences ->
-        preferences[PENDING_REASON] ?: ""
+    private fun parseLogHistory(jsonString: String): List<LogEntry> {
+        val list = mutableListOf<LogEntry>()
+        try {
+            val jsonArray = JSONArray(jsonString)
+            for (i in 0 until jsonArray.length()) {
+                val obj = jsonArray.getJSONObject(i)
+                list.add(
+                    LogEntry(
+                        id = obj.getLong("id"),
+                        timestamp = obj.getLong("timestamp"),
+                        rawText = obj.getString("rawText"),
+                        isAnomaly = obj.getBoolean("isAnomaly"),
+                        anomalyReason = obj.optString("anomalyReason", ""),
+                        status = obj.getString("status")
+                    )
+                )
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+        return list.sortedByDescending { it.timestamp }
     }
 
-    suspend fun savePendingReport(rawText: String, reason: String) {
+    private fun serializeLogHistory(list: List<LogEntry>): String {
+        val jsonArray = JSONArray()
+        list.forEach { entry ->
+            val obj = JSONObject()
+            obj.put("id", entry.id)
+            obj.put("timestamp", entry.timestamp)
+            obj.put("rawText", entry.rawText)
+            obj.put("isAnomaly", entry.isAnomaly)
+            obj.put("anomalyReason", entry.anomalyReason)
+            obj.put("status", entry.status)
+            jsonArray.put(obj)
+        }
+        return jsonArray.toString()
+    }
+
+    suspend fun addLogEntry(entry: LogEntry) {
         context.dataStore.edit { preferences ->
-            preferences[PENDING_RAW_TEXT] = rawText
-            preferences[PENDING_REASON] = reason
+            val jsonString = preferences[LOG_HISTORY] ?: "[]"
+            val list = parseLogHistory(jsonString).toMutableList()
+            
+            // Hapus log yang umurnya lebih dari 7 hari
+            val sevenDaysAgo = System.currentTimeMillis() - (7L * 24 * 60 * 60 * 1000)
+            list.removeAll { it.timestamp < sevenDaysAgo }
+            
+            list.add(entry)
+            preferences[LOG_HISTORY] = serializeLogHistory(list)
         }
     }
 
-    suspend fun clearPendingReport() {
+    suspend fun updateLogStatus(id: Long, newStatus: String) {
         context.dataStore.edit { preferences ->
-            preferences[PENDING_RAW_TEXT] = ""
-            preferences[PENDING_REASON] = ""
+            val jsonString = preferences[LOG_HISTORY] ?: "[]"
+            val list = parseLogHistory(jsonString).toMutableList()
+            val index = list.indexOfFirst { it.id == id }
+            if (index != -1) {
+                val oldEntry = list[index]
+                list[index] = oldEntry.copy(status = newStatus)
+                preferences[LOG_HISTORY] = serializeLogHistory(list)
+            }
         }
     }
 

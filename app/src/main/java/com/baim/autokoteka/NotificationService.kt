@@ -59,14 +59,33 @@ class NotificationService : NotificationListenerService() {
                 val latestRawText = dataStoreManager.latestRawTextFlow.first()
                 val validation = ReportParser.validateReport(parsedData, message, latestRawText)
 
+                val currentTime = System.currentTimeMillis()
+
                 if (!validation.isValid) {
-                    // Masukkan ke karantina
-                    dataStoreManager.savePendingReport(message, validation.reason)
+                    // Masukkan ke karantina log
+                    val entry = LogEntry(
+                        id = currentTime,
+                        timestamp = currentTime,
+                        rawText = message,
+                        isAnomaly = true,
+                        anomalyReason = validation.reason,
+                        status = "PENDING"
+                    )
+                    dataStoreManager.addLogEntry(entry)
                     showWarningNotification()
                     return@launch
                 }
                 
                 // Lulus Validasi -> Eksekusi normal
+                val normalEntry = LogEntry(
+                    id = currentTime,
+                    timestamp = currentTime,
+                    rawText = message,
+                    isAnomaly = false,
+                    anomalyReason = "",
+                    status = "PROCESSED"
+                )
+                dataStoreManager.addLogEntry(normalEntry)
                 dataStoreManager.setLatestRawText(message)
                 dataStoreManager.addAccumulation(parsedData.tHariIni, parsedData.isYalimo)
 
