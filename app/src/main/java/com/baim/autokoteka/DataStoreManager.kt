@@ -15,42 +15,58 @@ val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "ko
 class DataStoreManager(private val context: Context) {
 
     companion object {
-        val TOTAL_BULAN_INI = intPreferencesKey("total_bulan_ini")
-        val TOTAL_TAHUN_INI = intPreferencesKey("total_tahun_ini")
+        val WAMENA_BULAN_INI = intPreferencesKey("wamena_bulan_ini")
+        val WAMENA_TAHUN_INI = intPreferencesKey("wamena_tahun_ini")
+        val YALIMO_BULAN_INI = intPreferencesKey("yalimo_bulan_ini")
+        val YALIMO_TAHUN_INI = intPreferencesKey("yalimo_tahun_ini")
         val LATEST_REPORT = stringPreferencesKey("latest_report")
     }
 
-    // Default values based on requirements
-    val totalBulanIniFlow: Flow<Int> = context.dataStore.data.map { preferences ->
-        preferences[TOTAL_BULAN_INI] ?: 16
+    val wamenaBulanIniFlow: Flow<Int> = context.dataStore.data.map { preferences ->
+        preferences[WAMENA_BULAN_INI] ?: 21
+    }
+    val wamenaTahunIniFlow: Flow<Int> = context.dataStore.data.map { preferences ->
+        preferences[WAMENA_TAHUN_INI] ?: 294
     }
 
-    val totalTahunIniFlow: Flow<Int> = context.dataStore.data.map { preferences ->
-        preferences[TOTAL_TAHUN_INI] ?: 289
+    val yalimoBulanIniFlow: Flow<Int> = context.dataStore.data.map { preferences ->
+        preferences[YALIMO_BULAN_INI] ?: 0
+    }
+    val yalimoTahunIniFlow: Flow<Int> = context.dataStore.data.map { preferences ->
+        preferences[YALIMO_TAHUN_INI] ?: 0
     }
 
     val latestReportFlow: Flow<String> = context.dataStore.data.map { preferences ->
         preferences[LATEST_REPORT] ?: ""
     }
 
-    suspend fun updateTotalBulanIni(newValue: Int) {
+    suspend fun updateDataWamena(bulan: Int, tahun: Int) {
         context.dataStore.edit { preferences ->
-            preferences[TOTAL_BULAN_INI] = newValue
+            preferences[WAMENA_BULAN_INI] = bulan
+            preferences[WAMENA_TAHUN_INI] = tahun
         }
     }
 
-    suspend fun updateTotalTahunIni(newValue: Int) {
+    suspend fun updateDataYalimo(bulan: Int, tahun: Int) {
         context.dataStore.edit { preferences ->
-            preferences[TOTAL_TAHUN_INI] = newValue
+            preferences[YALIMO_BULAN_INI] = bulan
+            preferences[YALIMO_TAHUN_INI] = tahun
         }
     }
 
-    suspend fun addAccumulation(amount: Int) {
+    suspend fun addAccumulation(amount: Int, isYalimo: Boolean) {
         context.dataStore.edit { preferences ->
-            val currentBulan = preferences[TOTAL_BULAN_INI] ?: 16
-            val currentTahun = preferences[TOTAL_TAHUN_INI] ?: 289
-            preferences[TOTAL_BULAN_INI] = currentBulan + amount
-            preferences[TOTAL_TAHUN_INI] = currentTahun + amount
+            if (isYalimo) {
+                val currentBulan = preferences[YALIMO_BULAN_INI] ?: 0
+                val currentTahun = preferences[YALIMO_TAHUN_INI] ?: 0
+                preferences[YALIMO_BULAN_INI] = currentBulan + amount
+                preferences[YALIMO_TAHUN_INI] = currentTahun + amount
+            } else {
+                val currentBulan = preferences[WAMENA_BULAN_INI] ?: 21
+                val currentTahun = preferences[WAMENA_TAHUN_INI] ?: 294
+                preferences[WAMENA_BULAN_INI] = currentBulan + amount
+                preferences[WAMENA_TAHUN_INI] = currentTahun + amount
+            }
         }
     }
 

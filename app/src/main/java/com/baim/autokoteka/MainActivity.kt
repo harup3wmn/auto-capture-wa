@@ -2,7 +2,6 @@ package com.baim.autokoteka
 
 import android.content.ClipData
 import android.content.ClipboardManager
-import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
@@ -11,12 +10,15 @@ import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
@@ -53,8 +55,6 @@ class MainActivity : ComponentActivity() {
                 val clip = ClipData.newPlainText("Koteka Report", textToCopy)
                 clipboard.setPrimaryClip(clip)
                 Toast.makeText(this, "Teks Laporan Berhasil Di-copy!", Toast.LENGTH_LONG).show()
-                // Pindah ke background atau close activity bisa ditambahkan jika ingin
-                // finish()
             }
         }
     }
@@ -66,8 +66,11 @@ fun AutoKotekaApp() {
     val dataStoreManager = remember { DataStoreManager(context) }
     val coroutineScope = rememberCoroutineScope()
 
-    val totalBulanIni by dataStoreManager.totalBulanIniFlow.collectAsState(initial = 16)
-    val totalTahunIni by dataStoreManager.totalTahunIniFlow.collectAsState(initial = 289)
+    val wamenaBulan by dataStoreManager.wamenaBulanIniFlow.collectAsState(initial = 21)
+    val wamenaTahun by dataStoreManager.wamenaTahunIniFlow.collectAsState(initial = 294)
+    val yalimoBulan by dataStoreManager.yalimoBulanIniFlow.collectAsState(initial = 0)
+    val yalimoTahun by dataStoreManager.yalimoTahunIniFlow.collectAsState(initial = 0)
+    
     val latestReport by dataStoreManager.latestReportFlow.collectAsState(initial = "")
 
     var showEditDialog by remember { mutableStateOf(false) }
@@ -75,6 +78,7 @@ fun AutoKotekaApp() {
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .verticalScroll(rememberScrollState())
             .padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
@@ -132,33 +136,61 @@ fun AutoKotekaApp() {
             Text("Edit Data Akumulasi")
         }
         
-        Text(
-            text = "Total Bulan Ini: $totalBulanIni | Total Tahun Ini: $totalTahunIni",
-            style = MaterialTheme.typography.bodyMedium,
-            modifier = Modifier.padding(top = 8.dp)
-        )
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Tampilan Data Akumulasi
+        Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Text("Wamena Kota", fontWeight = FontWeight.Bold)
+                Text("Bulan Ini: $wamenaBulan | Tahun Ini: $wamenaTahun")
+                Spacer(modifier = Modifier.height(8.dp))
+                Text("Yalimo", fontWeight = FontWeight.Bold)
+                Text("Bulan Ini: $yalimoBulan | Tahun Ini: $yalimoTahun")
+                Spacer(modifier = Modifier.height(8.dp))
+                Text("UP3 Wamena (Total)", fontWeight = FontWeight.Bold)
+                Text("Bulan Ini: ${wamenaBulan + yalimoBulan} | Tahun Ini: ${wamenaTahun + yalimoTahun}")
+            }
+        }
     }
 
     if (showEditDialog) {
-        var editBulan by remember { mutableStateOf(totalBulanIni.toString()) }
-        var editTahun by remember { mutableStateOf(totalTahunIni.toString()) }
+        var editWamenaBulan by remember { mutableStateOf(wamenaBulan.toString()) }
+        var editWamenaTahun by remember { mutableStateOf(wamenaTahun.toString()) }
+        var editYalimoBulan by remember { mutableStateOf(yalimoBulan.toString()) }
+        var editYalimoTahun by remember { mutableStateOf(yalimoTahun.toString()) }
 
         AlertDialog(
             onDismissRequest = { showEditDialog = false },
-            title = { Text("Edit Data Akumulasi") },
+            title = { Text("Edit Akumulasi") },
             text = {
-                Column {
+                Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                    Text("Wamena Kota", fontWeight = FontWeight.Bold)
                     OutlinedTextField(
-                        value = editBulan,
-                        onValueChange = { editBulan = it },
-                        label = { Text("Total Bulan Ini") },
+                        value = editWamenaBulan,
+                        onValueChange = { editWamenaBulan = it },
+                        label = { Text("Bulan Ini") },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
                     )
-                    Spacer(modifier = Modifier.height(8.dp))
                     OutlinedTextField(
-                        value = editTahun,
-                        onValueChange = { editTahun = it },
-                        label = { Text("Total Tahun Ini") },
+                        value = editWamenaTahun,
+                        onValueChange = { editWamenaTahun = it },
+                        label = { Text("Tahun Ini") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                    )
+                    
+                    Spacer(modifier = Modifier.height(16.dp))
+                    
+                    Text("Yalimo", fontWeight = FontWeight.Bold)
+                    OutlinedTextField(
+                        value = editYalimoBulan,
+                        onValueChange = { editYalimoBulan = it },
+                        label = { Text("Bulan Ini") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                    )
+                    OutlinedTextField(
+                        value = editYalimoTahun,
+                        onValueChange = { editYalimoTahun = it },
+                        label = { Text("Tahun Ini") },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
                     )
                 }
@@ -167,8 +199,13 @@ fun AutoKotekaApp() {
                 Button(
                     onClick = {
                         coroutineScope.launch {
-                            editBulan.toIntOrNull()?.let { dataStoreManager.updateTotalBulanIni(it) }
-                            editTahun.toIntOrNull()?.let { dataStoreManager.updateTotalTahunIni(it) }
+                            val wb = editWamenaBulan.toIntOrNull() ?: wamenaBulan
+                            val wt = editWamenaTahun.toIntOrNull() ?: wamenaTahun
+                            val yb = editYalimoBulan.toIntOrNull() ?: yalimoBulan
+                            val yt = editYalimoTahun.toIntOrNull() ?: yalimoTahun
+                            
+                            dataStoreManager.updateDataWamena(wb, wt)
+                            dataStoreManager.updateDataYalimo(yb, yt)
                             showEditDialog = false
                         }
                     }

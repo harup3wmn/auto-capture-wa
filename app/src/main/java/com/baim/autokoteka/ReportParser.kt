@@ -12,6 +12,7 @@ object ReportParser {
     private val regexPB2 = Regex("4\\. Penebangan pohon 50 > Cm = (\\d+)")
 
     data class ParsedData(
+        val isYalimo: Boolean,
         val tanggal: String,
         val tHariIni: Int,
         val pk: Int,
@@ -25,7 +26,6 @@ object ReportParser {
         val matchTanggal = regexTanggal.find(message)
         val matchTHariIni = regexTHariIni.find(message)
         
-        // We only require Tanggal and T_Hari_Ini to be valid to consider it a report.
         if (matchTanggal == null || matchTHariIni == null) {
             Log.d("ReportParser", "Failed to parse required fields (Tanggal / T_Hari_Ini)")
             return null
@@ -40,24 +40,51 @@ object ReportParser {
         val pb2 = regexPB2.find(message)?.groupValues?.get(1)?.toIntOrNull() ?: 0
 
         val pb = pb1 + pb2
+        
+        val isYalimo = message.contains("elelim", ignoreCase = true) || message.contains("yalimo", ignoreCase = true)
 
-        return ParsedData(tanggal, tHariIni, pk, ps, pb)
+        return ParsedData(isYalimo, tanggal, tHariIni, pk, ps, pb)
     }
 
-    fun formatReport(data: ParsedData, totalBulanIni: Int, totalTahunIni: Int): String {
+    fun formatReport(
+        data: ParsedData, 
+        wamenaBulan: Int, 
+        wamenaTahun: Int,
+        yalimoBulan: Int,
+        yalimoTahun: Int
+    ): String {
+        
+        // UP3 Wamena = Total Gabungan
+        val totalUP3Bulan = wamenaBulan + yalimoBulan
+        val totalUP3Tahun = wamenaTahun + yalimoTahun
+        
+        // Harian UP3 = Hari ini Yalimo ATAU Wamena (karena dilaporkan salah satu)
+        val tHariIniUP3 = data.tHariIni
+        
+        // Logika tampilan berdasar ULP mana yang update
+        val wamenaHariIni = if (!data.isYalimo) data.tHariIni else 0
+        val wamenaPK = if (!data.isYalimo) data.pk else 0
+        val wamenaPS = if (!data.isYalimo) data.ps else 0
+        val wamenaPB = if (!data.isYalimo) data.pb else 0
+        
+        val yalimoHariIni = if (data.isYalimo) data.tHariIni else 0
+        val yalimoPK = if (data.isYalimo) data.pk else 0
+        val yalimoPS = if (data.isYalimo) data.ps else 0
+        val yalimoPB = if (data.isYalimo) data.pb else 0
+
         return """
 *Laporan Realisasi Tebang Program KOTEKA 2026 UP3 Wamena*
 Hari / ${data.tanggal}
 
-UP3 Wamena : PK ${data.pk} btg / PS ${data.ps} btg / PB ${data.pb} btg / T. Hari ini ${data.tHariIni} btg / T. Bulan Ini $totalBulanIni btg / T. s.d. hari ini $totalTahunIni btg
+UP3 Wamena : PK ${data.pk} btg / PS ${data.ps} btg / PB ${data.pb} btg / T. Hari ini $tHariIniUP3 btg / T. Bulan Ini $totalUP3Bulan btg / T. s.d. hari ini $totalUP3Tahun btg
 
 Perhitungan Realisasi mulai dihitung sejak 1 Januari 2026, semua foto penebangan difoto (1 foto untuk 1 titik)
 
-1. ULP Wamena Kota : PK ${data.pk} btg / PS ${data.ps} btg / PB ${data.pb} btg / T. Hari ini ${data.tHariIni} btg / T. Bulan Ini $totalBulanIni btg / T. s.d. hari ini $totalTahunIni btg
-- PT Nusa Daya : PK ${data.pk} btg / PS ${data.ps} btg / PB ${data.pb} btg / T. Hari ini ${data.tHariIni} btg / T. Bulan Ini $totalBulanIni btg / T. s.d. hari ini $totalTahunIni btg
+1. ULP Wamena Kota : PK $wamenaPK btg / PS $wamenaPS btg / PB $wamenaPB btg / T. Hari ini $wamenaHariIni btg / T. Bulan Ini $wamenaBulan btg / T. s.d. hari ini $wamenaTahun btg
+- PT Nusa Daya : PK $wamenaPK btg / PS $wamenaPS btg / PB $wamenaPB btg / T. Hari ini $wamenaHariIni btg / T. Bulan Ini $wamenaBulan btg / T. s.d. hari ini $wamenaTahun btg
 
-2. ULP Yalimo : PK 0 btg / PS 0 btg / PB 0 btg / T. Hari ini 0 btg / T. Bulan Ini 0 btg / T. s.d. hari ini 0 btg
-* PT  : PK .... btg / PS ..... btg / PB ..... btg / T. Hari ini .... btg / T. Bulan Ini ..... btg / T. s.d. hari ini ..... btg
+2. ULP Yalimo : PK $yalimoPK btg / PS $yalimoPS btg / PB $yalimoPB btg / T. Hari ini $yalimoHariIni btg / T. Bulan Ini $yalimoBulan btg / T. s.d. hari ini $yalimoTahun btg
+* PT  : PK $yalimoPK btg / PS $yalimoPS btg / PB $yalimoPB btg / T. Hari ini $yalimoHariIni btg / T. Bulan Ini $yalimoBulan btg / T. s.d. hari ini $yalimoTahun btg
 
 Ket : 
 PK : Pohon Kecil

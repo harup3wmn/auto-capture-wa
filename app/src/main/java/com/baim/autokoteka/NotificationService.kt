@@ -18,27 +18,36 @@ class NotificationService : NotificationListenerService() {
 
     private val serviceScope = CoroutineScope(Dispatchers.IO)
 
+    companion object {
+        private var lastProcessedText: String = ""
+        private var lastProcessedTime: Long = 0
+    }
+
     override fun onNotificationPosted(sbn: StatusBarNotification) {
         val packageName = sbn.packageName
         
-        // Hanya proses notifikasi dari WhatsApp
         if (packageName != "com.whatsapp") return
 
         val extras = sbn.notification.extras
-        val title = extras.getString("android.title") ?: ""
         val text = extras.getCharSequence("android.text")?.toString() ?: ""
 
-        // Mengecek apakah mengandung teks kunci
         if (text.contains("LAPORAN KEGIATAN PEKERJAAN TEAM ROW", ignoreCase = true) ||
             text.contains("PEROLEHAN PENEBANGAN SEJUMLAH", ignoreCase = true)) {
             
+            val currentTime = System.currentTimeMillis()
+            // Cegah double-counting jika pesan yang sama persis diproses dalam waktu berdekatan (kurang dari 10 detik)
+            if (text == lastProcessedText && (currentTime - lastProcessedTime) < 10000) {
+                return
+            }
+            lastProcessedText = text
+            lastProcessedTime = currentTime
+
             Log.d("NotificationService", "Pesan laporan terdeteksi: $text")
             processReport(text)
         }
     }
 
     override fun onNotificationRemoved(sbn: StatusBarNotification) {
-        // Tidak perlu implementasi khusus
     }
 
     private fun processReport(message: String) {
@@ -47,20 +56,23 @@ class NotificationService : NotificationListenerService() {
             if (parsedData != null) {
                 val dataStoreManager = DataStoreManager(applicationContext)
                 
-                // Tambahkan akumulasi
-                dataStoreManager.addAccumulation(parsedData.tHariIni)
+                // Tambahkan akumulasi dengan parameter lokasi
+                dataStoreManager.addAccumulation(parsedData.tHariIni, parsedData.isYalimo)
 
-                // Ambil nilai terbaru
-                val totalBulanIni = dataStoreManager.totalBulanIniFlow.first()
-                val totalTahunIni = dataStoreManager.totalTahunIniFlow.first()
+                // Ambil nilai terbaru untuk ke-4 keranjang
+                val wamenaBulan = dataStoreManager.wamenaBulanIniFlow.first()
+                val wamenaTahun = dataStoreManager.wamenaTahunIniFlow.first()
+                val yalimoBulan = dataStoreManager.yalimoBulanIniFlow.first()
+                val yalimoTahun = dataStoreManager.yalimoTahunIniFlow.first()
 
                 // Buat format report final
-                val finalReport = ReportParser.formatReport(parsedData, totalBulanIni, totalTahunIni)
+                val finalReport = ReportParser.formatReport(
+                    parsedData, 
+                    wamenaBulan, wamenaTahun, 
+                    yalimoBulan, yalimoTahun
+                )
                 
-                // Simpan ke local storage agar tampil di UI MainActivity
                 dataStoreManager.saveLatestReport(finalReport)
-
-                // Tampilkan notifikasi untuk kemudahan meng-copy
                 showCopyNotification(finalReport)
             }
         }
@@ -70,7 +82,6 @@ class NotificationService : NotificationListenerService() {
         val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         val channelId = "auto_koteka_channel"
 
-        // Buat channel (wajib untuk Android 8.0+)
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
                 channelId,
@@ -80,7 +91,6 @@ class NotificationService : NotificationListenerService() {
             notificationManager.createNotificationChannel(channel)
         }
 
-        // Intent untuk men-copy teks saat notifikasi diklik
         val copyIntent = Intent(this, MainActivity::class.java).apply {
             action = "ACTION_COPY_TEXT"
             putExtra("EXTRA_TEXT", reportText)
