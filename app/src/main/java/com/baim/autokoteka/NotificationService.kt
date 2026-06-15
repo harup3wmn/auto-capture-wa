@@ -20,7 +20,7 @@ class NotificationService : NotificationListenerService() {
 
     companion object {
         private var lastProcessedText: String = ""
-        private var lastProcessedTime: Long = 0
+        private var lastPostTime: Long = 0
     }
 
     override fun onNotificationPosted(sbn: StatusBarNotification) {
@@ -34,13 +34,14 @@ class NotificationService : NotificationListenerService() {
         if (text.contains("LAPORAN KEGIATAN PEKERJAAN TEAM ROW", ignoreCase = true) ||
             text.contains("PEROLEHAN PENEBANGAN SEJUMLAH", ignoreCase = true)) {
             
-            val currentTime = System.currentTimeMillis()
-            // Cegah double-counting jika pesan yang sama persis diproses dalam waktu berdekatan (kurang dari 10 detik)
-            if (text == lastProcessedText && (currentTime - lastProcessedTime) < 10000) {
+            val postTime = sbn.postTime
+            
+            // Cegah ghost notifications: Jika teks dan waktu postTime persis sama, ini adalah notifikasi hantu dari WhatsApp
+            if (text == lastProcessedText && postTime == lastPostTime) {
                 return
             }
             lastProcessedText = text
-            lastProcessedTime = currentTime
+            lastPostTime = postTime
 
             Log.d("NotificationService", "Pesan laporan terdeteksi: $text")
             processReport(text)
