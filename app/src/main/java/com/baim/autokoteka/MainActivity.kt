@@ -48,6 +48,17 @@ class MainActivity : ComponentActivity() {
         handleIntent(intent)
     }
 
+    override fun onResume() {
+        super.onResume()
+        // Coba hidupkan ulang NotificationListenerService secara paksa jika mati setelah update APK
+        try {
+            val componentName = android.content.ComponentName(this, NotificationService::class.java)
+            android.service.notification.NotificationListenerService.requestRebind(componentName)
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
     private fun handleIntent(intent: Intent?) {
         if (intent?.action == "ACTION_COPY_TEXT") {
             val textToCopy = intent.getStringExtra("EXTRA_TEXT")
