@@ -4,12 +4,12 @@ import android.util.Log
 
 object ReportParser {
 
-    private val regexTanggal = Regex("𝙃𝘼𝙍𝙄 / 𝙏𝘼𝙉𝙂𝙂𝘼𝙇\\s*:\\s*(.*)")
-    private val regexTHariIni = Regex("PEROLEHAN PENEBANGAN SEJUMLAH\\s*=\\s*(\\d+)")
-    private val regexPK = Regex("1\\.\\s*Penebangan pohon 5\\s*-\\s*20 Cm\\s*=\\s*(\\d+)")
-    private val regexPS = Regex("2\\.\\s*Penebangan pohon 20\\s*-\\s*30 Cm\\s*=\\s*(\\d+)")
-    private val regexPB1 = Regex("3\\.\\s*Penebangan pohon 30\\s*-\\s*50 Cm\\s*=\\s*(\\d+)")
-    private val regexPB2 = Regex("4\\.\\s*Penebangan pohon 50\\s*>\\s*Cm\\s*=\\s*(\\d+)")
+    private val regexTanggal = Regex("(?i)(?:hari|tanggal)[^\\n]*?[=:]\\s*([^\\n]+)")
+    private val regexTHariIni = Regex("(?i)(?:perolehan|total|jumlah)\\s+penebangan[^\\n]*?[=:]?[ \\t]*(\\d+)")
+    private val regexPK = Regex("(?i)1\\.[^\\n]*?5\\s*-\\s*20[^\\n]*?[=:]?[ \\t]*(\\d+)")
+    private val regexPS = Regex("(?i)2\\.[^\\n]*?20\\s*-\\s*30[^\\n]*?[=:]?[ \\t]*(\\d+)")
+    private val regexPB1 = Regex("(?i)3\\.[^\\n]*?30\\s*-\\s*50[^\\n]*?[=:]?[ \\t]*(\\d+)")
+    private val regexPB2 = Regex("(?i)4\\.[^\\n]*?50\\s*>[^\\n]*?[=:]?[ \\t]*(\\d+)")
 
     data class ParsedData(
         val isYalimo: Boolean,
