@@ -4,7 +4,7 @@ import android.util.Log
 
 object ReportParser {
 
-    private val regexTanggal = Regex("(?i)(?:hari|tanggal)[^\\n]*?[=:]\\s*([^\\n]+)")
+    private val regexTanggal = Regex("(?i)(?:hari|tanggal|𝙃𝘼𝙍𝙄|𝙏𝘼𝙉𝙂𝙂𝘼𝙇)[^\\n]*?[=:]\\s*([^\\n]+)")
     private val regexTHariIni = Regex("(?i)(?:perolehan|total|jumlah)\\s+penebangan[^\\n]*?[=:]?[ \\t]*(\\d+)")
     private val regexPK = Regex("(?i)1\\.[^\\n]*?5\\s*-\\s*20[^\\n]*?[=:]?[ \\t]*(\\d+)")
     private val regexPS = Regex("(?i)2\\.[^\\n]*?20\\s*-\\s*30[^\\n]*?[=:]?[ \\t]*(\\d+)")
