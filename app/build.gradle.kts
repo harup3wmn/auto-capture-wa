@@ -4,11 +4,11 @@ plugins {
 }
 
 android {
-    namespace = "com.baim.autokoteka"
+    namespace = "com.baim.autocapture"
     compileSdk = 34
 
     defaultConfig {
-        applicationId = "com.baim.autokoteka"
+        applicationId = "com.baim.autocapture"
         minSdk = 24
         targetSdk = 34
         versionCode = 1
@@ -61,6 +61,11 @@ dependencies {
     
     // Preferences DataStore
     implementation("androidx.datastore:datastore-preferences:1.0.0")
+
+    // Retrofit & Gson for HTTP Requests
+    implementation("com.squareup.retrofit2:retrofit:2.9.0")
+    implementation("com.squareup.retrofit2:converter-gson:2.9.0")
+    implementation("com.squareup.okhttp3:logging-interceptor:4.11.0")
 
     testImplementation("junit:junit:4.13.2")
     androidTestImplementation("androidx.test.ext:junit:1.1.5")
