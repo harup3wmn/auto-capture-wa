@@ -216,7 +216,7 @@ fun LogEntryCard(
         Column(modifier = Modifier.padding(16.dp)) {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 Text(dateString, style = MaterialTheme.typography.labelSmall, color = contentColor)
-                Text("\${entry.status} (\${entry.reportType.uppercase()})", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = contentColor)
+                Text("${entry.status} (${entry.reportType.uppercase()})", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = contentColor)
             }
             Spacer(modifier = Modifier.height(8.dp))
 
@@ -279,7 +279,7 @@ fun LogEntryCard(
                                             dataStoreManager.updateLogStatus(entry.id, "SENT")
                                             Toast.makeText(context, "Berhasil Dikirim!", Toast.LENGTH_SHORT).show()
                                         } else {
-                                            Toast.makeText(context, "Gagal: \${response.code()}", Toast.LENGTH_LONG).show()
+                                            Toast.makeText(context, "Gagal: ${response.code()}", Toast.LENGTH_LONG).show()
                                         }
                                     } catch (e: Exception) {
                                         Toast.makeText(context, "Error Koneksi", Toast.LENGTH_LONG).show()

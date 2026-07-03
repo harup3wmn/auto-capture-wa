@@ -76,13 +76,13 @@ class NotificationService : NotificationListenerService() {
 
             // AI Filter dengan Groq
             try {
-                val prompt = "Apakah teks berikut adalah sebuah laporan kegiatan lapangan petugas PLN (seperti perabasan, inspeksi, pemeliharaan)? Jawab HANYA dengan 'YA' atau 'TIDAK'. Teks: \"\$message\""
+                val prompt = "Apakah teks berikut adalah sebuah laporan kegiatan lapangan petugas PLN (seperti perabasan, inspeksi, pemeliharaan)? Jawab HANYA dengan 'YA' atau 'TIDAK'. Teks: \"$message\""
                 
                 val request = GroqRequest(
                     messages = listOf(GroqMessage(role = "user", content = prompt))
                 )
                 
-                val response = NetworkClient.groqApi.checkMessage("Bearer \$apiKey", request)
+                val response = NetworkClient.groqApi.checkMessage("Bearer $apiKey", request)
                 if (response.isSuccessful) {
                     val aiAnswer = response.body()?.choices?.firstOrNull()?.message?.content?.trim()?.uppercase() ?: ""
                     
@@ -91,10 +91,10 @@ class NotificationService : NotificationListenerService() {
                         dataStore.addLogEntry(entry)
                         showNotification("Laporan Lapangan Ditangkap", "Buka aplikasi untuk mengirim")
                     } else {
-                        Log.d("NotificationService", "AI Filter menolak pesan: \$aiAnswer")
+                        Log.d("NotificationService", "AI Filter menolak pesan: $aiAnswer")
                     }
                 } else {
-                    Log.e("NotificationService", "Groq API Error: \${response.errorBody()?.string()}")
+                    Log.e("NotificationService", "Groq API Error: ${response.errorBody()?.string()}")
                     // Fallback to PENDING
                     val entry = LogEntry(currentTime, currentTime, message, true, "Gagal filter AI", "PENDING", reportType)
                     dataStore.addLogEntry(entry)
