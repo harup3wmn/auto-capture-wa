@@ -1,7 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
-    <background>
-        <color android:color="#E8F5E9" />
-    </background>
-    <foreground android:drawable="@drawable/ic_koteka_logo" />
-</adaptive-icon>
