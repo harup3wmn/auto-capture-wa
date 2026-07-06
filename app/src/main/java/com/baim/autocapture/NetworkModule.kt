@@ -36,7 +36,7 @@ data class WebhookPayload(
 
 data class WebhookResponse(
     val status: String,
-    val hasil: String?
+    val message: String?
 )
 
 // --- API Interfaces ---

@@ -276,8 +276,14 @@ fun LogEntryCard(
                                         val payload = WebhookPayload(pesan = entry.rawText, type = entry.reportType)
                                         val response = NetworkClient.webhookApi.sendReport(webhookUrl, payload)
                                         if (response.isSuccessful) {
-                                            dataStoreManager.updateLogStatus(entry.id, "SENT")
-                                            Toast.makeText(context, "Berhasil Dikirim!", Toast.LENGTH_SHORT).show()
+                                            val body = response.body()
+                                            if (body?.status == "success") {
+                                                dataStoreManager.updateLogStatus(entry.id, "SENT")
+                                                Toast.makeText(context, "Berhasil Dikirim!", Toast.LENGTH_SHORT).show()
+                                            } else {
+                                                val errorMsg = body?.message ?: "Terjadi kesalahan di Chatbot"
+                                                Toast.makeText(context, "Chatbot Error: $errorMsg", Toast.LENGTH_LONG).show()
+                                            }
                                         } else {
                                             Toast.makeText(context, "Gagal: ${response.code()}", Toast.LENGTH_LONG).show()
                                         }
