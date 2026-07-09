@@ -33,8 +33,17 @@ class NotificationService : NotificationListenerService() {
         // Cek nama pengirim (title)
         val title = extras.getCharSequence("android.title")?.toString() ?: ""
         
-        // Logika Pre-Filter Lokal
+        // Logika Pre-Filter Lokal (Diperketat untuk membuang obrolan biasa)
+        // 1. Teks laporan lapangan pasti panjang (biasanya > 70 karakter)
+        if (text.length < 70) return
+        
         val lowerText = text.lowercase()
+        
+        // 2. Harus mengandung kata kunci formal
+        val hasFormalKeyword = lowerText.contains("laporan") || lowerText.contains("realisasi") || lowerText.contains("pekerjaan")
+        if (!hasFormalKeyword) return
+
+        // 3. Cek kategori pekerjaan
         val isRow = lowerText.contains("row") || lowerText.contains("perabasan") || lowerText.contains("penebangan") || lowerText.contains("rabas") || lowerText.contains("tebang")
         val isPemeliharaan = lowerText.contains("pemeliharaan") || lowerText.contains("har") || lowerText.contains("sutm")
         val isInspeksi = lowerText.contains("inspeksi")
