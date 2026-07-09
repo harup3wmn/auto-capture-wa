@@ -202,6 +202,7 @@ fun LogEntryCard(
 
     var isEditing by remember { mutableStateOf(false) }
     var editedText by remember { mutableStateOf(entry.rawText) }
+    var isSending by remember { mutableStateOf(false) }
 
     val (containerColor, contentColor) = when (entry.status) {
         "PENDING" -> Pair(MaterialTheme.colorScheme.errorContainer, MaterialTheme.colorScheme.onErrorContainer)
@@ -271,6 +272,7 @@ fun LogEntryCard(
                                     return@Button
                                 }
                                 
+                                isSending = true
                                 coroutineScope.launch {
                                     try {
                                         val payload = WebhookPayload(pesan = entry.rawText, type = entry.reportType)
@@ -289,11 +291,20 @@ fun LogEntryCard(
                                         }
                                     } catch (e: Exception) {
                                         Toast.makeText(context, "Error Koneksi", Toast.LENGTH_LONG).show()
+                                    } finally {
+                                        isSending = false
                                     }
                                 }
-                            }
+                            },
+                            enabled = !isSending
                         ) {
-                            Text("Kirim 🚀")
+                            if (isSending) {
+                                CircularProgressIndicator(modifier = Modifier.size(16.dp), color = MaterialTheme.colorScheme.onPrimary, strokeWidth = 2.dp)
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("Loading...")
+                            } else {
+                                Text("Kirim 🚀")
+                            }
                         }
                     }
                 }
