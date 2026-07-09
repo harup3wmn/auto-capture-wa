@@ -60,9 +60,16 @@ interface WebhookService {
 object NetworkClient {
     private const val GROQ_BASE_URL = "https://api.groq.com/openai/"
 
+    private val okHttpClient = okhttp3.OkHttpClient.Builder()
+        .connectTimeout(60, java.util.concurrent.TimeUnit.SECONDS)
+        .readTimeout(60, java.util.concurrent.TimeUnit.SECONDS)
+        .writeTimeout(60, java.util.concurrent.TimeUnit.SECONDS)
+        .build()
+
     val groqApi: GroqApiService by lazy {
         Retrofit.Builder()
             .baseUrl(GROQ_BASE_URL)
+            .client(okHttpClient)
             .addConverterFactory(GsonConverterFactory.create())
             .build()
             .create(GroqApiService::class.java)
@@ -71,6 +78,7 @@ object NetworkClient {
     val webhookApi: WebhookService by lazy {
         Retrofit.Builder()
             .baseUrl("https://script.google.com/") // Base URL dummy, URL asli dikirim via @Url
+            .client(okHttpClient)
             .addConverterFactory(GsonConverterFactory.create())
             .build()
             .create(WebhookService::class.java)
