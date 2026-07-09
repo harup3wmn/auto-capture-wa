@@ -48,11 +48,14 @@ class NotificationService : NotificationListenerService() {
         val isPemeliharaan = lowerText.contains("pemeliharaan") || lowerText.contains("har") || lowerText.contains("sutm")
         val isInspeksi = lowerText.contains("inspeksi")
         
+        // Abaikan notifikasi ringkasan grup (Summary) dari WhatsApp agar tidak dobel
+        if (sbn.notification.flags and android.app.Notification.FLAG_GROUP_SUMMARY != 0) return
+        
         if (isRow || isPemeliharaan || isInspeksi) {
-            val postTime = sbn.postTime
-            if (text == lastProcessedText && postTime == lastPostTime) return
+            // Hindari memproses teks yang sama berulang kali jika notifikasi nyangkut
+            if (text == lastProcessedText) return
             lastProcessedText = text
-            lastPostTime = postTime
+            lastPostTime = sbn.postTime
 
             Log.d("NotificationService", "Pre-Filter Passed: $text")
             
