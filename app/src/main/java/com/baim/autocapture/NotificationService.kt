@@ -35,7 +35,7 @@ class NotificationService : NotificationListenerService() {
         
         // Logika Pre-Filter Lokal
         val lowerText = text.lowercase()
-        val isRow = lowerText.contains("row") || lowerText.contains("perabasan") || lowerText.contains("penebangan")
+        val isRow = lowerText.contains("row") || lowerText.contains("perabasan") || lowerText.contains("penebangan") || lowerText.contains("rabas") || lowerText.contains("tebang")
         val isPemeliharaan = lowerText.contains("pemeliharaan") || lowerText.contains("har") || lowerText.contains("sutm")
         val isInspeksi = lowerText.contains("inspeksi")
         
