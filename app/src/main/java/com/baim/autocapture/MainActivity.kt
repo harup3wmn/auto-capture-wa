@@ -217,7 +217,7 @@ fun LogEntryCard(
         Column(modifier = Modifier.padding(16.dp)) {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 Text(dateString, style = MaterialTheme.typography.labelSmall, color = contentColor)
-                Text("${entry.status} (${entry.reportType.uppercase()})", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = contentColor)
+                Text(entry.status, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = contentColor)
             }
             Spacer(modifier = Modifier.height(8.dp))
 
@@ -275,7 +275,7 @@ fun LogEntryCard(
                                 isSending = true
                                 coroutineScope.launch {
                                     try {
-                                        val payload = WebhookPayload(pesan = entry.rawText, type = entry.reportType)
+                                        val payload = WebhookPayload(pesan = entry.rawText)
                                         val response = NetworkClient.webhookApi.sendReport(webhookUrl, payload)
                                         if (response.isSuccessful) {
                                             val body = response.body()

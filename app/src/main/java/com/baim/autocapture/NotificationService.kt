@@ -59,12 +59,7 @@ class NotificationService : NotificationListenerService() {
 
             Log.d("NotificationService", "Pre-Filter Passed: $text")
             
-            val type = when {
-                isRow -> "row"
-                isPemeliharaan -> "pemeliharaan"
-                isInspeksi -> "inspeksi"
-                else -> "unknown"
-            }
+            val type = "auto"
             
             processReport(text, type, title)
         }

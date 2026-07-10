@@ -30,8 +30,7 @@ data class GroqChoice(
 
 // --- Webhook Model ---
 data class WebhookPayload(
-    val pesan: String,
-    val type: String
+    val pesan: String
 )
 
 data class WebhookResponse(
