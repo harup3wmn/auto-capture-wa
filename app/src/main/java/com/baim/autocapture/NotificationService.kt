@@ -19,8 +19,7 @@ class NotificationService : NotificationListenerService() {
     private val serviceScope = CoroutineScope(Dispatchers.IO)
 
     companion object {
-        private var lastProcessedText: String = ""
-        private var lastPostTime: Long = 0
+        private val processedMessages = mutableSetOf<Int>()
     }
 
     override fun onNotificationPosted(sbn: StatusBarNotification) {
@@ -52,10 +51,12 @@ class NotificationService : NotificationListenerService() {
         if (sbn.notification.flags and android.app.Notification.FLAG_GROUP_SUMMARY != 0) return
         
         if (isRow || isPemeliharaan || isInspeksi) {
-            // Hindari memproses teks yang sama berulang kali jika notifikasi nyangkut
-            if (text == lastProcessedText) return
-            lastProcessedText = text
-            lastPostTime = sbn.postTime
+            // Hindari memproses teks yang sama dari waktu yang sama berulang kali jika notifikasi nyangkut
+            val messageHash = (text + sbn.postTime).hashCode()
+            if (processedMessages.contains(messageHash)) return
+            
+            processedMessages.add(messageHash)
+            if (processedMessages.size > 200) processedMessages.clear() // Mencegah memory leak
 
             Log.d("NotificationService", "Pre-Filter Passed: $text")
             

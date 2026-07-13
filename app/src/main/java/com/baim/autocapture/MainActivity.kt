@@ -60,6 +60,9 @@ fun AutoCaptureApp() {
 
     var showSettingsDialog by remember { mutableStateOf(false) }
 
+    val pm = context.getSystemService(Context.POWER_SERVICE) as android.os.PowerManager
+    var isBatteryOptimized by remember { mutableStateOf(!pm.isIgnoringBatteryOptimizations(context.packageName)) }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -84,6 +87,21 @@ fun AutoCaptureApp() {
         Spacer(modifier = Modifier.height(16.dp))
 
         PermissionCheckSection(context)
+
+        if (isBatteryOptimized) {
+            Spacer(modifier = Modifier.height(8.dp))
+            Button(
+                onClick = {
+                    val intent = Intent(android.provider.Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS)
+                    intent.data = android.net.Uri.parse("package:${context.packageName}")
+                    context.startActivity(intent)
+                },
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+            ) {
+                Text("⚠️ Matikan Penghemat Baterai (Penting)")
+            }
+            Text("Agar aplikasi tidak mati sendiri di background", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+        }
 
         Spacer(modifier = Modifier.height(24.dp))
 
