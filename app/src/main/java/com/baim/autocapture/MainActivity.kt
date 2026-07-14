@@ -59,6 +59,7 @@ fun AutoCaptureApp() {
     val webhookUrl by dataStoreManager.webhookUrlFlow.collectAsState(initial = "")
 
     var showSettingsDialog by remember { mutableStateOf(false) }
+    var showManualDialog by remember { mutableStateOf(false) }
 
     val pm = context.getSystemService(Context.POWER_SERVICE) as android.os.PowerManager
     var isBatteryOptimized by remember { mutableStateOf(!pm.isIgnoringBatteryOptimizations(context.packageName)) }
@@ -79,8 +80,13 @@ fun AutoCaptureApp() {
                 text = "Auto-Capture WA",
                 style = MaterialTheme.typography.headlineMedium,
             )
-            Button(onClick = { showSettingsDialog = true }) {
-                Text("⚙️")
+            Row {
+                Button(onClick = { showManualDialog = true }, modifier = Modifier.padding(end = 8.dp)) {
+                    Text("➕")
+                }
+                Button(onClick = { showSettingsDialog = true }) {
+                    Text("⚙️")
+                }
             }
         }
 
@@ -126,6 +132,51 @@ fun AutoCaptureApp() {
                 Spacer(modifier = Modifier.height(8.dp))
             }
         }
+    }
+
+    if (showManualDialog) {
+        var manualText by remember { mutableStateOf("") }
+        AlertDialog(
+            onDismissRequest = { showManualDialog = false },
+            title = { Text("Input Laporan Manual") },
+            text = {
+                OutlinedTextField(
+                    value = manualText,
+                    onValueChange = { manualText = it },
+                    label = { Text("Paste / Ketik Laporan Disini") },
+                    modifier = Modifier.fillMaxWidth().height(200.dp),
+                    maxLines = 10
+                )
+            },
+            confirmButton = {
+                Button(onClick = {
+                    if (manualText.isNotBlank()) {
+                        coroutineScope.launch {
+                            val entry = LogEntry(
+                                timestamp = System.currentTimeMillis(),
+                                processedTime = System.currentTimeMillis(),
+                                rawText = manualText.trim(),
+                                isAiError = false,
+                                aiErrorMessage = "",
+                                status = "PENDING",
+                                reportType = "auto"
+                            )
+                            dataStoreManager.addLogEntry(entry)
+                            showManualDialog = false
+                        }
+                    } else {
+                        Toast.makeText(context, "Pesan tidak boleh kosong", Toast.LENGTH_SHORT).show()
+                    }
+                }) {
+                    Text("Tambah")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showManualDialog = false }) {
+                    Text("Batal")
+                }
+            }
+        )
     }
 
     if (showSettingsDialog) {
