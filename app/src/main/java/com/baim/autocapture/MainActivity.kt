@@ -153,11 +153,11 @@ fun AutoCaptureApp() {
                     if (manualText.isNotBlank()) {
                         coroutineScope.launch {
                             val entry = LogEntry(
+                                id = System.currentTimeMillis(),
                                 timestamp = System.currentTimeMillis(),
-                                processedTime = System.currentTimeMillis(),
                                 rawText = manualText.trim(),
-                                isAiError = false,
-                                aiErrorMessage = "",
+                                isAnomaly = false,
+                                anomalyReason = "",
                                 status = "PENDING",
                                 reportType = "auto"
                             )
