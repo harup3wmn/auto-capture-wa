@@ -57,6 +57,25 @@ class DataStoreManager(private val context: Context) {
         }
     }
 
+    private fun cleanupOldLogs(logs: MutableList<LogEntry>) {
+        val currentTime = System.currentTimeMillis()
+        val threeDaysMs = 3L * 24 * 60 * 60 * 1000
+        val sevenDaysMs = 7L * 24 * 60 * 60 * 1000
+
+        logs.removeAll { entry ->
+            val age = currentTime - entry.timestamp
+            val isResponded = entry.status != "PENDING"
+            
+            if (isResponded && age > threeDaysMs) {
+                true
+            } else if (!isResponded && age > sevenDaysMs) {
+                true
+            } else {
+                false
+            }
+        }
+    }
+
     suspend fun addLogEntry(entry: LogEntry) {
         context.dataStore.edit { preferences ->
             val currentJson = preferences[LOG_HISTORY] ?: "[]"
@@ -69,9 +88,12 @@ class DataStoreManager(private val context: Context) {
                 return@edit // Abaikan (auto cut) jika sudah ada 2 pesan yang sama persis
             }
 
-            // Simpan max 50 log terbaru
+            // Simpan max 200 log terbaru
             currentLogs.add(0, entry)
-            if (currentLogs.size > 50) {
+            
+            cleanupOldLogs(currentLogs)
+            
+            if (currentLogs.size > 200) {
                 currentLogs.removeAt(currentLogs.size - 1)
             }
 
@@ -88,6 +110,7 @@ class DataStoreManager(private val context: Context) {
             val logIndex = currentLogs.indexOfFirst { it.id == id }
             if (logIndex != -1) {
                 currentLogs[logIndex].status = newStatus
+                cleanupOldLogs(currentLogs)
                 preferences[LOG_HISTORY] = gson.toJson(currentLogs)
             }
         }
@@ -103,6 +126,7 @@ class DataStoreManager(private val context: Context) {
             if (logIndex != -1) {
                 // Buat copy baru dari LogEntry karena data class immutable jika property nya val
                 currentLogs[logIndex] = currentLogs[logIndex].copy(rawText = newText)
+                cleanupOldLogs(currentLogs)
                 preferences[LOG_HISTORY] = gson.toJson(currentLogs)
             }
         }

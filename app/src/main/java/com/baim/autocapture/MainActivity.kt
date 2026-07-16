@@ -8,6 +8,7 @@ import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
@@ -60,6 +61,7 @@ fun AutoCaptureApp() {
 
     var showSettingsDialog by remember { mutableStateOf(false) }
     var showManualDialog by remember { mutableStateOf(false) }
+    var filterStatus by remember { mutableStateOf("ALL") }
 
     val pm = context.getSystemService(Context.POWER_SERVICE) as android.os.PowerManager
     var isBatteryOptimized by remember { mutableStateOf(!pm.isIgnoringBatteryOptimizations(context.packageName)) }
@@ -118,10 +120,33 @@ fun AutoCaptureApp() {
         )
         Spacer(modifier = Modifier.height(8.dp))
 
-        if (logHistory.isEmpty()) {
+        Row(
+            modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            val filters = listOf("ALL" to "Semua", "PENDING" to "Tertunda", "SENT" to "Terkirim", "REJECTED" to "Ditolak")
+            filters.forEach { (status, label) ->
+                val isSelected = filterStatus == status
+                Button(
+                    onClick = { filterStatus = status },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
+                        contentColor = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
+                    ),
+                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
+                ) {
+                    Text(label, style = MaterialTheme.typography.labelMedium)
+                }
+            }
+        }
+        Spacer(modifier = Modifier.height(16.dp))
+
+        val filteredLogs = if (filterStatus == "ALL") logHistory else logHistory.filter { it.status == filterStatus }
+
+        if (filteredLogs.isEmpty()) {
             Text("Belum ada laporan yang ditangkap.", style = MaterialTheme.typography.bodyMedium)
         } else {
-            logHistory.forEach { entry ->
+            filteredLogs.forEach { entry ->
                 LogEntryCard(
                     entry = entry,
                     dataStoreManager = dataStoreManager,
