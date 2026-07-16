@@ -63,6 +63,12 @@ class DataStoreManager(private val context: Context) {
             val type = object : TypeToken<MutableList<LogEntry>>() {}.type
             val currentLogs: MutableList<LogEntry> = gson.fromJson(currentJson, type)
 
+            // Cek batasan duplikasi (maksimal 2 pesan yang 100% identik)
+            val identicalCount = currentLogs.count { it.rawText.trim() == entry.rawText.trim() }
+            if (identicalCount >= 2) {
+                return@edit // Abaikan (auto cut) jika sudah ada 2 pesan yang sama persis
+            }
+
             // Simpan max 50 log terbaru
             currentLogs.add(0, entry)
             if (currentLogs.size > 50) {
